@@ -46,6 +46,10 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
   private arrowHover: { id: string; dir: 'N' | 'E' | 'S' | 'W' } | null = null;
   // чтобы печатать enter/leave ровно один раз
   private lastArrowHoverKey: string | null = null; // формат `${id}:${dir}`
+  private debug = true;     // можно выключить позже клавишей 'D'
+  private mouseX = 0;
+  private mouseY = 0;
+  private lastHoverId: string | null = null;
 
 
   // interaction
@@ -133,12 +137,22 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
     }
   }
 
-  // ===== Mouse handling =====
+  @HostListener('keydown', ['$event'])
+  onKey(ev: KeyboardEvent) {
+    if (ev.key === 'd' || ev.key === 'D') {
+      this.debug = !this.debug;
+      console.log('[debug] overlay =', this.debug);
+    }
+  }
+
+
   @HostListener('mousemove', ['$event'])
   onMoveMouse(ev: MouseEvent) {
     const { left, top } = this.cvRef.nativeElement.getBoundingClientRect();
     const mx = (ev.clientX - left);  // CSS-пиксели
     const my = (ev.clientY - top);   // CSS-пиксели
+    this.mouseX = mx;
+    this.mouseY = my;
 
     // 0) hover по стрелкам у выбранной 1×1 стены
     const selectedWall = this.placed.find(bb => bb.selected && bb.cls === 'wall' && bb.size === 1);
@@ -184,6 +198,15 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
 
     // hover detection
     this.hoveringId = this.findAt(mx, my);
+    if (this.hoveringId !== this.lastHoverId) {
+      if (this.lastHoverId) console.log('[hover] leave', this.lastHoverId);
+      if (this.hoveringId) console.log('[hover] enter', this.hoveringId);
+      this.lastHoverId = this.hoveringId;
+    }
+
+    if (!this.arrowHover && !this.draggingId) {
+      (this.cvRef.nativeElement as HTMLCanvasElement).style.cursor = this.hoveringId ? 'grab' : 'default';
+    }
   }
 
   @HostListener('mousedown', ['$event'])
@@ -262,16 +285,23 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
   @HostListener('mouseleave') onLeave() { if (this.draggingId) { this.draggingId = null; this.cancelDrag.emit(); this.rebuildOcc(); } }
 
   private findAt(px: number, py: number): string | null {
-    // идём с конца массива, чтобы попадать по верхним объектам
+    // проходим с конца (верхние объекты — первее)
     for (let i = this.placed.length - 1; i >= 0; i--) {
       const b = this.placed[i];
 
-      const halfW = this.tile * b.size;
-      const halfH = this.tile * b.size * 0.5;
+      const halfW = this.tile * b.size;        // полу-ширина ромба
+      const halfH = this.tile * b.size * 0.5;  // полу-высота ромба
       const c = this.gridToScreen(b.x + b.size / 2, b.y + b.size / 2);
 
-      // грубая AABB вокруг ромба — достаточно точно для кликов/hover
-      if (px > c.x - halfW && px < c.x + halfW && py > c.y - halfH && py < c.y + halfH) {
+      // переводим точку в локальные координаты ромба
+      const dx = px - c.x;
+      const dy = py - c.y;
+
+      // быстрый отсекающий AABB
+      if (Math.abs(dx) > halfW || Math.abs(dy) > halfH) continue;
+
+      // точная проверка ромба (лоzенж): |dx|/halfW + |dy|/halfH <= 1
+      if ((Math.abs(dx) / halfW + Math.abs(dy) / halfH) <= 1) {
         return b.id;
       }
     }
@@ -279,10 +309,13 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
   }
 
 
+
   // ===== Draw =====
   private draw() {
-    const ctx = this.ctx; const cw = this.cvRef.nativeElement.width; const ch = this.cvRef.nativeElement.height;
-    ctx.clearRect(0, 0, cw, ch);
+    const ctx = this.ctx;
+    const cwCss = this.cvRef.nativeElement.width / this.dpr;
+    const chCss = this.cvRef.nativeElement.height / this.dpr;
+    ctx.clearRect(0, 0, cwCss, chCss);
 
     // grid
     this.drawGrid();
@@ -292,6 +325,7 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
 
     // dragging preview (ghost)
     if (this.dragGhost) { this.drawBuilding(this.dragGhost, true); if (this.draggingId === 'ghost' && this.dragGhost.radius > 0) this.drawRadius(this.dragGhost, true); }
+    this.drawDebugOverlay();
   }
 
   private drawGrid() {
@@ -307,6 +341,49 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
     }
     ctx.restore();
   }
+
+  private drawDebugOverlay() {
+    if (!this.debug) return;
+    const ctx = this.ctx;
+
+    // крестик мыши
+    ctx.save();
+    ctx.strokeStyle = '#ff7e7e';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(this.mouseX - 8, this.mouseY); ctx.lineTo(this.mouseX + 8, this.mouseY);
+    ctx.moveTo(this.mouseX, this.mouseY - 8); ctx.lineTo(this.mouseX, this.mouseY + 8);
+    ctx.stroke();
+    ctx.restore();
+
+    // по всем объектам: ромб (как рисуем) и AABB рамкой
+    for (const b of this.placed) {
+      const halfW = this.tile * b.size;
+      const halfH = this.tile * b.size * 0.5;
+      const c = this.gridToScreen(b.x + b.size / 2, b.y + b.size / 2);
+
+      // ромб — тонкой бирюзовой
+      this.ctx.save();
+      this.ctx.strokeStyle = '#57dcfd';
+      this.ctx.lineWidth = 1;
+      this.ctx.beginPath();
+      this.ctx.moveTo(c.x, c.y - halfH);
+      this.ctx.lineTo(c.x + halfW, c.y);
+      this.ctx.lineTo(c.x, c.y + halfH);
+      this.ctx.lineTo(c.x - halfW, c.y);
+      this.ctx.closePath();
+      this.ctx.stroke();
+      this.ctx.restore();
+
+      // AABB — красной пунктирной (чтобы видеть, что find раньше был «квадратом»)
+      this.ctx.save();
+      this.ctx.setLineDash([4, 3]);
+      this.ctx.strokeStyle = '#ff5252';
+      this.ctx.strokeRect(c.x - halfW, c.y - halfH, halfW * 2, halfH * 2);
+      this.ctx.restore();
+    }
+  }
+
 
   private drawBuilding(b: PlacedBuilding, ghost: boolean) {
     const ctx = this.ctx;
@@ -393,19 +470,26 @@ export class BoardComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   private colorFor(cls: string) {
-    switch (cls) {
-      case 'wall': return '#394050';
-      case 'tower': return '#3a6ff2';
-      case 'cannon': return '#c95b3d';
-      case 'mortar': return '#8a6cff';
-      case 'sorcery': return '#e46ad2';
-      case 'tesla': return '#38e0b9';
-      case 'mine': return '#8b9aa7';
-      case 'th': return '#fdcb57';
-      case 'aa': return '#57dcfd';
-      default: return '#6b7c8f';
-    }
+  switch (cls) {
+    case 'wall': return '#394050';
+    case 'archer': return '#3a6ff2';
+    case 'cannon': return '#c95b3d';
+    case 'mortar': return '#8a6cff';
+    case 'airdef': return '#57dcfd';
+    case 'wizard': return '#e46ad2';
+    case 'sweeper': return '#38e0b9';
+    case 'tesla': return '#00d1b2';
+    case 'bomb': return '#d6774f';
+    case 'xbow': return '#7cc37a';
+    case 'storage': return '#8b9aa7';
+    case 'th': return '#fdcb57';
+    case 'clan': return '#9ad0ff';
+    case 'hero': return '#ff8bd1';
+    case 'spring': return '#b0b7c3';
+    default: return '#6b7c8f';
   }
+}
+
   private abbrev(b: PlacedBuilding) { return b.key.split(' ').map(s => s[0]).join('').toUpperCase(); }
 
   // экранные прямоугольники для хит-теста стрелок
