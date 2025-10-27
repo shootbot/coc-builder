@@ -1,0 +1,19 @@
+# Node / Angular
+node_modules/
+dist/
+.tmp/
+.cache/
+.angular/
+coverage/
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.log
+# Env / secrets
+.env
+.env.*
+# IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json

@@ -1,0 +1,167 @@
+:root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --ink: #e7ebf3;
+    --muted: #8a95a7;
+    --accent: #57dcfd;
+    --good: #7dd76f;
+    --warn: #fdcb57;
+    --bad: #fd7857;
+}
+
+* {
+    box-sizing: border-box
+}
+
+html,
+body {
+    height: 100%
+}
+
+body {
+    margin: 0;
+    background: linear-gradient(180deg, #0e1014, #0c0e12);
+    color: var(--ink);
+    font-family: Inter, system-ui, Segoe UI, Roboto, Arial, sans-serif
+}
+
+.app {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 12px;
+    height: 100vh;
+    padding: 12px
+}
+
+.panel {
+    background: var(--panel);
+    border: 1px solid #202532;
+    border-radius: 14px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column
+}
+
+.panel h2 {
+    margin: 4px 0 12px;
+    font-size: 18px
+}
+
+.inventory {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: auto
+}
+
+.inv-row {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 10px;
+    background: #11151d;
+    border: 1px solid #1f2430;
+    cursor: grab
+}
+
+.inv-row:active {
+    cursor: grabbing
+}
+
+.inv-row .qty {
+    color: var(--muted)
+}
+
+.icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    font-weight: 700
+}
+
+.icon.wall {
+    background: #394050
+}
+
+.icon.tower {
+    background: #3a6ff2
+}
+
+.icon.cannon {
+    background: #c95b3d
+}
+
+.icon.mortar {
+    background: #8a6cff
+}
+
+.icon.sorcery {
+    background: #e46ad2
+}
+
+.icon.tesla {
+    background: #38e0b9
+}
+
+.icon.mine {
+    background: #8b9aa7
+}
+
+.icon.th {
+    background: #fdcb57;
+    color: #222
+}
+
+.icon.aa {
+    background: #57dcfd;
+    color: #111
+}
+
+.board-wrap {
+    position: relative;
+    background: #0a0c10;
+    border: 1px solid #202532;
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    /* ВАЖНО: колонкой */
+    flex-direction: column;
+}
+
+.toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px
+}
+
+button {
+    background: #151a22;
+    color: var(--ink);
+    border: 1px solid #273041;
+    border-radius: 10px;
+    padding: 8px 10px;
+    cursor: pointer
+}
+
+button:hover {
+    background: #1b2230
+}
+
+.canvas {
+    flex: 1 1 auto;
+    /* Во весь остаток под тулбаром */
+    width: 100%;
+    min-height: 0;
+    /* чтобы flex не зажимал */
+    display: block;
+}
+
+.hint {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 8px
+}
