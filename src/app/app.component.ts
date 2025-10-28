@@ -63,7 +63,7 @@ export class AppComponent {
     }
 
     const inv = structuredClone(this.inventory());
-    const left = inv['wall100']?.count ?? 0;
+    const left = inv['wall']?.count ?? 0;
     if (left <= 0) { console.log('[expand] no walls left'); return; }
 
     let dx = 0, dy = 0;
@@ -82,7 +82,7 @@ export class AppComponent {
       if (placedNow.length < left && this.isFree(nx, ny, 1)) {
         const wall: PlacedBuilding = {
           id: crypto.randomUUID(),
-          key: 'wall100',
+          key: 'wall',
           x: nx, y: ny,
           size: 1, radius: 0, cls: 'wall',
           selected: false,
@@ -100,7 +100,7 @@ export class AppComponent {
     this.placed.set([...this.placed(), ...placedNow]);
 
     // Обновляем инвентарь
-    inv['wall100'].count = Math.max(0, left - placedNow.length);
+    inv['wall'].count = Math.max(0, left - placedNow.length);
     this.inventory.set(inv);
 
     // Новый якорь — ПОСЛЕДНЯЯ поставленная стена
